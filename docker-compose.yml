@@ -1,0 +1,37 @@
+version: "3.8"
+
+services:
+  mongo1:
+    hostname: mongo1
+    image: mongo
+    ports:
+      - 27017:27017 
+    restart: always
+    command: mongod --replSet myReplicaSet --bind_ip localhost,mongo1
+  mongo2:
+    hostname: mongo2
+    image: mongo
+    ports:
+      - 27018:27017
+    restart: always
+    command: mongod --replSet myReplicaSet --bind_ip localhost,mongo2
+  mongo3:
+    hostname: mongo3
+    image: mongo
+    ports:
+      - 27019:27017
+    restart: always
+    command: mongod --replSet myReplicaSet --bind_ip localhost,mongo3
+  mongoinit:
+    image: mongo
+    restart: "no"
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+    healthcheck:
+      test: mongosh --host mongo1 --eval 'rs.initiate({_id:"myReplicaSet",members:[{_id:0,host:"mongo1"},{_id:1,host:"mongo2"},{_id:2,host:"mongo3"}]})'
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 20s    
