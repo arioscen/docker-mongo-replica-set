@@ -3,27 +3,27 @@ version: "3.8"
 services:
   mongo1:
     hostname: mongo1
-    image: mongo
+    image: mongo:6.0.3
     ports:
       - 27017:27017 
     restart: always
     command: mongod --replSet myReplicaSet --bind_ip localhost,mongo1
   mongo2:
     hostname: mongo2
-    image: mongo
+    image: mongo:6.0.3
     ports:
       - 27018:27017
     restart: always
     command: mongod --replSet myReplicaSet --bind_ip localhost,mongo2
   mongo3:
     hostname: mongo3
-    image: mongo
+    image: mongo:6.0.3
     ports:
       - 27019:27017
     restart: always
     command: mongod --replSet myReplicaSet --bind_ip localhost,mongo3
   mongoinit:
-    image: mongo
+    image: mongo:6.0.3
     restart: "no"
     depends_on:
       - mongo1
