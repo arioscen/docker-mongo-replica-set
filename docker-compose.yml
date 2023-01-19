@@ -29,9 +29,6 @@ services:
       - mongo1
       - mongo2
       - mongo3
-    healthcheck:
-      test: ["CMD", "mongosh", "--host", "mongo1", "--eval", "rs.initiate({_id:\"myReplicaSet\",members:[{_id:0,host:\"mongo1\"},{_id:1,host:\"mongo2\"},{_id:2,host:\"mongo3\"}]})"]
-      interval: 10s
-      timeout: 10s
-      retries: 3
-      start_period: 20s    
+    command: >
+      sh -c "sleep 20 &&
+             mongosh --host mongo1 --eval 'rs.initiate({_id:\"myReplicaSet\",members:[{_id:0,host:\"mongo1\"},{_id:1,host:\"mongo2\"},{_id:2,host:\"mongo3\"}]})'"
