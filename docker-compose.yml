@@ -6,26 +6,35 @@ x-mongo:
   restart: always
 
 services:
-  mongo1:
+  first-config:
     << : *default-mongo
-    hostname: mongo1
-    command: mongod --configsvr --replSet myReplicaSet --bind_ip localhost,mongo1
-  mongo2:
+    hostname: first-config
+    command: mongod --configsvr --replSet configReplicaSet --bind_ip localhost,first-config
+  second-config:
     << : *default-mongo
-    hostname: mongo2
-    command: mongod --configsvr --replSet myReplicaSet --bind_ip localhost,mongo2
-  mongo3:
+    hostname: second-config
+    command: mongod --configsvr --replSet configReplicaSet --bind_ip localhost,second-config
+  third-config:
     << : *default-mongo
-    hostname: mongo3
-    command: mongod --configsvr --replSet myReplicaSet --bind_ip localhost,mongo3
-  mongoinit:
+    hostname: third-config
+    command: mongod --configsvr --replSet configReplicaSet --bind_ip localhost,third-config
+  config-init:
     << : *default-mongo
     restart: "no"
     depends_on:
-      - mongo1
-      - mongo2
-      - mongo3
+      - first-config
+      - second-config
+      - third-config
     command: >
-      sh -c "sleep 20 &&
-             mongosh --host mongo1 --port 27019 --eval 'rs.initiate({_id:\"myReplicaSet\",configsvr:true,members:[{_id:0,host:\"mongo1:27019\"},{_id:1,host:\"mongo2:27019\"},{_id:2,host:\"mongo3:27019\"}]})'"
-
+      sh -c "sleep 15 &&
+             mongosh --host first-config --port 27019 --eval 'rs.initiate({_id:\"configReplicaSet\",configsvr:true,members:[{_id:0,host:\"first-config:27019\"},{_id:1,host:\"second-config:27019\"},{_id:2,host:\"third-config:27019\"}]})'"
+  mongos:
+    << : *default-mongo
+    hostname: mongos
+    ports:
+      - 27017:27017
+    volumes:
+      - ./mongos:/root
+    command: >
+      sh -c "sleep 30 &&
+             mongos --pidfilepath /root/mongos.pid --bind_ip 0.0.0.0 --configdb configReplicaSet/first-config:27019,second-config:27019,third-config:27019"
