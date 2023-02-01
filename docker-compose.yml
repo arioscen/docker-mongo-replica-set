@@ -6,6 +6,7 @@ x-mongo:
   restart: always
 
 services:
+  # config
   first-config:
     << : *default-mongo
     hostname: first-config
@@ -28,6 +29,52 @@ services:
     command: >
       sh -c "sleep 15 &&
              mongosh --host first-config --port 27019 --eval 'rs.initiate({_id:\"configReplicaSet\",configsvr:true,members:[{_id:0,host:\"first-config:27019\"},{_id:1,host:\"second-config:27019\"},{_id:2,host:\"third-config:27019\"}]})'"
+  # shard-one
+  first-shard-one:
+    << : *default-mongo
+    hostname: first-shard-one
+    command: mongod --shardsvr --replSet oneReplicaSet --bind_ip localhost,first-shard-one
+  second-shard-one:
+    << : *default-mongo
+    hostname: second-shard-one
+    command: mongod --shardsvr --replSet oneReplicaSet --bind_ip localhost,second-shard-one
+  third-shard-one:
+    << : *default-mongo
+    hostname: third-shard-one
+    command: mongod --shardsvr --replSet oneReplicaSet --bind_ip localhost,third-shard-one
+  shard-one-init:
+    << : *default-mongo
+    restart: "no"
+    depends_on:
+      - first-shard-one
+      - second-shard-one
+      - third-shard-one
+    command: >
+      sh -c "sleep 15 &&
+             mongosh --host first-shard-one --port 27018 --eval 'rs.initiate({_id:\"oneReplicaSet\",members:[{_id:0,host:\"first-shard-one:27018\"},{_id:1,host:\"second-shard-one:27018\"},{_id:2,host:\"third-shard-one:27018\"}]})'"
+  # shard-two
+  first-shard-two:
+    << : *default-mongo
+    hostname: first-shard-two
+    command: mongod --shardsvr --replSet twoReplicaSet --bind_ip localhost,first-shard-two
+  second-shard-two:
+    << : *default-mongo
+    hostname: second-shard-two
+    command: mongod --shardsvr --replSet twoReplicaSet --bind_ip localhost,second-shard-two
+  third-shard-two:
+    << : *default-mongo
+    hostname: third-shard-two
+    command: mongod --shardsvr --replSet twoReplicaSet --bind_ip localhost,third-shard-two
+  shard-two-init:
+    << : *default-mongo
+    restart: "no"
+    depends_on:
+      - first-shard-two
+      - second-shard-two
+      - third-shard-two
+    command: >
+      sh -c "sleep 15 &&
+             mongosh --host first-shard-two --port 27018 --eval 'rs.initiate({_id:\"twoReplicaSet\",members:[{_id:0,host:\"first-shard-two:27018\"},{_id:1,host:\"second-shard-two:27018\"},{_id:2,host:\"third-shard-two:27018\"}]})'"
   mongos:
     << : *default-mongo
     hostname: mongos
