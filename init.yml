@@ -1,0 +1,80 @@
+version: "3.8"
+
+x-mongo:
+  &default-mongo
+  image: mongo:6.0.3
+  restart: "no"
+
+services:
+  # config
+  first-config:
+    << : *default-mongo
+    hostname: first-config
+    volumes:
+      - ./workspace/mongod/first-config:/data/db
+    command: >
+      sh -c "
+        mongod --fork --logpath /tmp/mongo.log --configsvr --replSet configReplicaSet --bind_ip localhost,first-config;
+        sleep 10;
+        mongosh --port 27019 --eval 'rs.initiate({_id:\"configReplicaSet\",configsvr:true,members:[{_id:0,host:\"first-config:27019\"},{_id:1,host:\"second-config:27019\"},{_id:2,host:\"third-config:27019\"}]})';
+        sleep 20;
+        mongosh --port 27019 --eval 'use admin' --eval 'db.shutdownServer()';
+      "
+  second-config:
+    << : *default-mongo
+    hostname: second-config
+    volumes:
+      - ./workspace/mongod/second-config:/data/db
+    command: >
+      sh -c "
+        mongod --fork --logpath /tmp/mongo.log --configsvr --replSet configReplicaSet --bind_ip localhost,second-config;
+        sleep 20;
+        mongosh --port 27019 --eval 'use admin' --eval 'db.shutdownServer()';
+      "
+  third-config:
+    << : *default-mongo
+    hostname: third-config
+    volumes:
+      - ./workspace/mongod/third-config:/data/db
+    command: >
+      sh -c "
+        mongod --fork --logpath /tmp/mongo.log --configsvr --replSet configReplicaSet --bind_ip localhost,third-config;
+        sleep 20;
+        mongosh --port 27019 --eval 'use admin' --eval 'db.shutdownServer()';
+      "
+  # shard-one
+  first-shard-one:
+    << : *default-mongo
+    hostname: first-shard-one
+    volumes:
+      - ./workspace/mongod/first-shard-one:/data/db
+    command: >
+      sh -c "
+        mongod --fork --logpath /tmp/mongo.log --shardsvr --replSet oneReplicaSet --bind_ip localhost,first-shard-one;
+        sleep 10;
+        mongosh --port 27018 --eval 'rs.initiate({_id:\"oneReplicaSet\",members:[{_id:0,host:\"first-shard-one:27018\"},{_id:1,host:\"second-shard-one:27018\"},{_id:2,host:\"third-shard-one:27018\"}]})'
+        sleep 20;
+        mongosh --port 27018 --eval 'use admin' --eval 'db.shutdownServer()';
+      "
+  second-shard-one:
+    << : *default-mongo
+    hostname: second-shard-one
+    volumes:
+      - ./workspace/mongod/second-shard-one:/data/db
+    command: >
+      sh -c "
+        mongod --fork --logpath /tmp/mongo.log --shardsvr --replSet oneReplicaSet --bind_ip localhost,second-shard-one;
+        sleep 20;
+        mongosh --port 27018 --eval 'use admin' --eval 'db.shutdownServer()';
+      "
+  third-shard-one:
+    << : *default-mongo
+    hostname: third-shard-one
+    volumes:
+      - ./workspace/mongod/third-shard-one:/data/db
+    command: >
+      sh -c "
+        mongod --fork --logpath /tmp/mongo.log --shardsvr --replSet oneReplicaSet --bind_ip localhost,third-shard-one;
+        sleep 20;
+        mongosh --port 27018 --eval 'use admin' --eval 'db.shutdownServer()';
+      "

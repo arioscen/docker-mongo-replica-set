@@ -10,78 +10,55 @@ services:
   first-config:
     << : *default-mongo
     hostname: first-config
-    command: mongod --configsvr --replSet configReplicaSet --bind_ip localhost,first-config
+    volumes:
+      - ./workspace/mongod/first-config:/data/db
+      - ./workspace/mongos:/mongos
+    command: mongod --configsvr --keyFile /mongos/replkey --replSet configReplicaSet --bind_ip localhost,first-config
   second-config:
     << : *default-mongo
     hostname: second-config
-    command: mongod --configsvr --replSet configReplicaSet --bind_ip localhost,second-config
+    volumes:
+      - ./workspace/mongod/second-config:/data/db
+      - ./workspace/mongos:/mongos
+    command: mongod --configsvr --keyFile /mongos/replkey --replSet configReplicaSet --bind_ip localhost,second-config
   third-config:
     << : *default-mongo
     hostname: third-config
-    command: mongod --configsvr --replSet configReplicaSet --bind_ip localhost,third-config
-  config-init:
-    << : *default-mongo
-    restart: "no"
-    depends_on:
-      - first-config
-      - second-config
-      - third-config
-    command: >
-      sh -c "sleep 15 &&
-             mongosh --host first-config --port 27019 --eval 'rs.initiate({_id:\"configReplicaSet\",configsvr:true,members:[{_id:0,host:\"first-config:27019\"},{_id:1,host:\"second-config:27019\"},{_id:2,host:\"third-config:27019\"}]})'"
+    volumes:
+      - ./workspace/mongod/third-config:/data/db
+      - ./workspace/mongos:/mongos
+    command: mongod --configsvr --keyFile /mongos/replkey --replSet configReplicaSet --bind_ip localhost,third-config
   # shard-one
   first-shard-one:
     << : *default-mongo
     hostname: first-shard-one
-    command: mongod --shardsvr --replSet oneReplicaSet --bind_ip localhost,first-shard-one
+    volumes:
+      - ./workspace/mongod/first-shard-one:/data/db
+      - ./workspace/mongos:/mongos
+    command: mongod --shardsvr --keyFile /mongos/replkey --replSet oneReplicaSet --bind_ip localhost,first-shard-one
   second-shard-one:
     << : *default-mongo
     hostname: second-shard-one
-    command: mongod --shardsvr --replSet oneReplicaSet --bind_ip localhost,second-shard-one
+    volumes:
+      - ./workspace/mongod/second-shard-one:/data/db
+      - ./workspace/mongos:/mongos
+    command: mongod --shardsvr --keyFile /mongos/replkey --replSet oneReplicaSet --bind_ip localhost,second-shard-one
   third-shard-one:
     << : *default-mongo
     hostname: third-shard-one
-    command: mongod --shardsvr --replSet oneReplicaSet --bind_ip localhost,third-shard-one
-  shard-one-init:
-    << : *default-mongo
-    restart: "no"
-    depends_on:
-      - first-shard-one
-      - second-shard-one
-      - third-shard-one
-    command: >
-      sh -c "sleep 15 &&
-             mongosh --host first-shard-one --port 27018 --eval 'rs.initiate({_id:\"oneReplicaSet\",members:[{_id:0,host:\"first-shard-one:27018\"},{_id:1,host:\"second-shard-one:27018\"},{_id:2,host:\"third-shard-one:27018\"}]})'"
-  # shard-two
-  first-shard-two:
-    << : *default-mongo
-    hostname: first-shard-two
-    command: mongod --shardsvr --replSet twoReplicaSet --bind_ip localhost,first-shard-two
-  second-shard-two:
-    << : *default-mongo
-    hostname: second-shard-two
-    command: mongod --shardsvr --replSet twoReplicaSet --bind_ip localhost,second-shard-two
-  third-shard-two:
-    << : *default-mongo
-    hostname: third-shard-two
-    command: mongod --shardsvr --replSet twoReplicaSet --bind_ip localhost,third-shard-two
-  shard-two-init:
-    << : *default-mongo
-    restart: "no"
-    depends_on:
-      - first-shard-two
-      - second-shard-two
-      - third-shard-two
-    command: >
-      sh -c "sleep 15 &&
-             mongosh --host first-shard-two --port 27018 --eval 'rs.initiate({_id:\"twoReplicaSet\",members:[{_id:0,host:\"first-shard-two:27018\"},{_id:1,host:\"second-shard-two:27018\"},{_id:2,host:\"third-shard-two:27018\"}]})'"
+    volumes:
+      - ./workspace/mongod/third-shard-one:/data/db
+      - ./workspace/mongos:/mongos
+    command: mongod --shardsvr --keyFile /mongos/replkey --replSet oneReplicaSet --bind_ip localhost,third-shard-one
   mongos:
     << : *default-mongo
     hostname: mongos
     ports:
       - 27017:27017
     volumes:
-      - ./mongos:/root
+      - ./workspace/mongos:/mongos
     command: >
-      sh -c "sleep 30 &&
-             mongos --pidfilepath /root/mongos.pid --bind_ip 0.0.0.0 --configdb configReplicaSet/first-config:27019,second-config:27019,third-config:27019"
+      sh -c "
+        sleep 30;
+        mongos --keyFile /mongos/replkey --pidfilepath /mongos/mongos.pid --bind_ip 0.0.0.0 --configdb configReplicaSet/first-config:27019,second-config:27019,third-config:27019;
+      "
